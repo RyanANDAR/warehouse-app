@@ -1,146 +1,196 @@
-import React, { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Warehouse Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-const AISLES = [1, 2, 3, 4];
+  <style>
+    body {
+      font-family: Arial;
+      padding: 15px;
+    }
+
+    h1, h2 {
+      text-align: center;
+    }
+
+    .aisle {
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-bottom: 15px;
+    }
+
+    button {
+      padding: 8px;
+      margin: 3px;
+      font-size: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      max-width: 250px;
+      margin: auto;
+    }
+
+    .bin {
+      border: 1px solid black;
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    .red { background: #fca5a5; }
+    .yellow { background: #fde68a; }
+    .green { background: #86efac; }
+
+    input {
+      display: block;
+      margin: 5px auto;
+      padding: 5px;
+      width: 80%;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>Warehouse Overview</h1>
+
+<div id="app"></div>
+
+<script>
+const AISLES = [1,2,3,4];
 const SECTIONS = 5;
-const BINS_PER_SECTION = 12;
-// Define which aisles have two sides
-const getSides = (aisle) => {
-  if (aisle === 4) return ["A"]; // last aisle only one side
-  return ["A", "B"];
-};
+const BINS = 12;
 
+let current = "overview";
+let selected = {};
+let data = JSON.parse(localStorage.getItem("warehouseData")) || {};
 
-// Helper to generate bin IDs
-const getBinId = (aisle, side, section, index) => `${aisle}${side}-${section}-${String(index + 1).padStart(2, "0")}`;
-export default function WarehouseApp() {
-  const [view, setView] = useState("overview");
-  const [selectedShelf, setSelectedShelf] = useState(null);
-  const [data, setData] = useState({});
-  const [search, setSearch] = useState("");
+function save() {
+  localStorage.setItem("warehouseData", JSON.stringify(data));
+  render();
+}
 
-  useEffect(() => {
-    const saved = localStorage.getItem("warehouseData");
-    if (saved) setData(JSON.parse(saved));
-  }, []);
+function getColor(item) {
+  if (!item) return "red";
+  if (item.qty < 5) return "yellow";
+  return "green";
+}
 
-  useEffect(() => {
-    localStorage.setItem("warehouseData", JSON.stringify(data));
-  }, [data]);
+function render() {
+  const app = document.getElementById("app");
+  app.innerHTML = "";
 
-  const getColor = (bin) => {
-    if (!bin || !bin.product) return "bg-red-200";
-    if (bin.qty < 5) return "bg-yellow-200";
-    return "bg-green-200";
-  };
+  if (current === "overview") {
+    AISLES.forEach(a => {
 
-  const handleUpdate = (binId, product, qty, notes) => {
-    setData({
-      ...data,
-      [binId]: { product, qty: Number(qty), notes }
+      let wrapper = document.createElement("div");
+      wrapper.className = "aisle";
+
+      let title = document.createElement("h2");
+      title.innerText = "Aisle " + a;
+      wrapper.appendChild(title);
+
+      let sides = (a === 4) ? ["A"] : ["A","B"];
+
+      sides.forEach(s => {
+        let label = document.createElement("div");
+        label.innerHTML = "<strong>Side " + s + "</strong>";
+        wrapper.appendChild(label);
+
+        for (let i=1;i<=SECTIONS;i++) {
+          let btn = document.createElement("button");
+          btn.innerText = "S" + i;
+          btn.onclick = ()=>{
+            selected = {a,s,section:i};
+            current = "shelf";
+            render();
+          };
+          wrapper.appendChild(btn);
+        }
+      });
+
+      app.appendChild(wrapper);
     });
-  };
-
-  if (view === "overview") {
-    return (
-      <div className="p-4">
-        <h1 className="text-2xl font-bold mb-4">Warehouse Overview</h1>
-
-        <Input
-          placeholder="Search product..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="mb-4"
-        />
-
-        <div className="grid grid-cols-4 gap-4">
-          {AISLES.map((aisle) => (
-            <Card key={aisle}>
-              <CardContent>
-                <h2 className="font-bold mb-2">Aisle {aisle}</h2>
-                <div className="flex flex-col gap-2">
-                  {getSides(aisle).map((side) => (
-                    <div key={side}>
-                      <div className="font-semibold mb-1">Side {side}</div>
-                      <div className="grid grid-cols-2 gap-1">
-                        {[...Array(SECTIONS)].map((_, s) => (
-                          <Button
-                            key={s}
-                            onClick={() => {
-                              setSelectedShelf({ aisle, side, section: s + 1 });
-                              setView("shelf");
-                            }}
-                          >
-                            S{s + 1}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
   }
 
-  if (view === "shelf") {
-    const { aisle, side, section } = selectedShelf;
+  if (current === "shelf") {
+    let back = document.createElement("button");
+    back.innerText = "⬅ Back";
+    back.onclick = ()=>{current="overview"; render();};
+    app.appendChild(back);
 
-    return (
-      <div className="p-4">
-        <Button onClick={() => setView("overview")} className="mb-4">Back</Button>
-        <h2 className="text-xl font-bold mb-4">Aisle {aisle}{side} - Section {section}</h2>
+    let title = document.createElement("h2");
+    title.innerText = `Aisle ${selected.a}${selected.s} - Section ${selected.section}`;
+    app.appendChild(title);
 
-        {/* 2 across, 6 tall layout */}
-        <div className="grid grid-cols-2 gap-3 max-w-xs">
-          {[...Array(BINS_PER_SECTION)].map((_, i) => {
-            const id = getBinId(aisle, side, section, i);
-            const filtered = search && data[id]?.product?.toLowerCase().includes(search.toLowerCase());
+    let grid = document.createElement("div");
+    grid.className = "grid";
 
-            return (
-              <div
-                key={id}
-                onClick={() => {
-                  setSelectedShelf({ ...selectedShelf, binId: id });
-                  setView("detail");
-                }}
-                className={`p-4 text-sm text-center cursor-pointer border ${getColor(data[id])} ${filtered ? "ring-4 ring-blue-400" : ""}`}
-              >
-                {id}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
+    for (let i=0;i<BINS;i++) {
+      let id = `${selected.a}${selected.s}-${selected.section}-${String(i+1).padStart(2,"0")}`;
+
+      let box = document.createElement("div");
+      box.className = "bin " + getColor(data[id]);
+      box.innerText = id;
+
+      box.onclick = ()=>{
+        selected.bin = id;
+        current = "detail";
+        render();
+      };
+
+      grid.appendChild(box);
+    }
+
+    app.appendChild(grid);
   }
 
-  if (view === "detail") {
-    const { aisle, side, section, binId } = selectedShelf;
-    const bin = data[binId] || {};
+  if (current === "detail") {
+    let back = document.createElement("button");
+    back.innerText = "⬅ Back";
+    back.onclick = ()=>{current="shelf"; render();};
+    app.appendChild(back);
 
-    const [product, setProduct] = useState(bin.product || "");
-    const [qty, setQty] = useState(bin.qty || "");
-    const [notes, setNotes] = useState(bin.notes || "");
+    let h = document.createElement("h2");
+    h.innerText = selected.bin;
+    app.appendChild(h);
 
-    return (
-      <div className="p-4">
-        <Button onClick={() => setView("shelf")} className="mb-4">Back</Button>
-        <h2 className="text-lg font-bold">{binId}</h2>
+    let item = data[selected.bin] || {};
 
-        <div className="flex flex-col gap-2 mt-4">
-          <Input placeholder="Product" value={product} onChange={(e) => setProduct(e.target.value)} />
-          <Input placeholder="Quantity" value={qty} onChange={(e) => setQty(e.target.value)} />
-          <Input placeholder="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+    let p = document.createElement("input");
+    let q = document.createElement("input");
+    let n = document.createElement("input");
 
-          <Button onClick={() => handleUpdate(binId, product, qty, notes)}>Save</Button>
-        </div>
-      </div>
-    );
+    p.placeholder="Product"; p.value=item.product||"";
+    q.placeholder="Qty"; q.value=item.qty||"";
+    n.placeholder="Notes"; n.value=item.notes||"";
+
+    app.appendChild(p);
+    app.appendChild(q);
+    app.appendChild(n);
+
+    let saveBtn = document.createElement("button");
+    saveBtn.innerText="Save";
+    saveBtn.onclick = ()=>{
+      data[selected.bin] = {
+        product:p.value,
+        qty:Number(q.value),
+        notes:n.value
+      };
+      save();
+    };
+
+    app.appendChild(saveBtn);
   }
 }
+
+render();
+</script>
+
+</body>
+</html>
