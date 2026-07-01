@@ -5,26 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <style>
-    body {
-      font-family: Arial;
-      padding: 15px;
-    }
+    body { font-family: Arial; padding: 15px; }
+    h1, h2 { text-align: center; }
 
-    h1, h2 {
-      text-align: center;
-    }
+    .aisle { border: 1px solid #ccc; padding: 10px; margin-bottom: 15px; }
 
-    .aisle {
-      border: 1px solid #ccc;
-      padding: 10px;
-      margin-bottom: 15px;
-    }
-
-    button {
-      padding: 8px;
-      margin: 3px;
-      font-size: 14px;
-    }
+    button { padding: 8px; margin: 3px; }
 
     .grid {
       display: grid;
@@ -46,34 +32,51 @@
     .yellow { background: #fde68a; }
     .green { background: #86efac; }
 
-    input {
-      display: block;
-      margin: 5px auto;
-      padding: 5px;
-      width: 80%;
-    }
+    input { display: block; margin: 5px auto; padding: 5px; width: 80%; }
   </style>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
 
 <body>
 
 <h1>Warehouse Overview</h1>
-
 <div id="app"></div>
 
 <script>
+
+// 🔥 PASTE YOUR firebaseConfig HERE
+const firebaseConfig = {
+  apiKey: "AIzaSyCNmQYztjeWvUmteF8S67MaReW-AjIzj_8",
+  authDomain: "warehouse-app-38a03.firebaseapp.com",
+  projectId: "warehouse-app-38a03",
+  storageBucket: "warehouse-app-38a03.firebasestorage.app",
+  messagingSenderId: "854063247545",
+  appId: "1:854063247545:web:dd44bfde0b9df87cd76b68"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
 const AISLES = [1,2,3,4];
 const SECTIONS = 5;
 const BINS = 12;
 
 let current = "overview";
 let selected = {};
-let data = JSON.parse(localStorage.getItem("warehouseData")) || {};
+let data = {};
 
-function save() {
-  localStorage.setItem("warehouseData", JSON.stringify(data));
+// 🔥 REAL-TIME DATA SYNC
+db.collection("bins").onSnapshot(snapshot => {
+  data = {};
+  snapshot.forEach(doc => {
+    data[doc.id] = doc.data();
+  });
   render();
-}
+});
 
 function getColor(item) {
   if (!item) return "red";
@@ -87,7 +90,6 @@ function render() {
 
   if (current === "overview") {
     AISLES.forEach(a => {
-
       let wrapper = document.createElement("div");
       wrapper.className = "aisle";
 
@@ -177,12 +179,11 @@ function render() {
     let saveBtn = document.createElement("button");
     saveBtn.innerText="Save";
     saveBtn.onclick = ()=>{
-      data[selected.bin] = {
+      db.collection("bins").doc(selected.bin).set({
         product:p.value,
         qty:Number(q.value),
         notes:n.value
-      };
-      save();
+      });
     };
 
     app.appendChild(saveBtn);
@@ -190,6 +191,7 @@ function render() {
 }
 
 render();
+
 </script>
 
 </body>
