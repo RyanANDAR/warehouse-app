@@ -22,3 +22,237 @@
 
     button {
       padding: 10px;
+      margin: 4px;
+      font-size: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      max-width: 260px;
+      margin: auto;
+    }
+
+    .bin {
+      border: 1px solid black;
+      padding: 22px;
+      text-align: center;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    .red { background: #fca5a5; }
+    .yellow { background: #fde68a; }
+    .green { background: #86efac; }
+
+    input {
+      display: block;
+      margin: 10px auto;
+      padding: 6px;
+      width: 90%;
+      font-size: 16px;
+    }
+  </style>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+</head>
+
+<body>
+
+<h1>Warehouse Overview</h1>
+<div id="app"></div>
+
+<script>
+
+// ✅ Firebase config (yours already included)
+const firebaseConfig = {
+  apiKey: "AIzaSyCNmQYztjeWvUmteF8S67MaReW-AjIzj_8",
+  authDomain: "warehouse-app-38a03.firebaseapp.com",
+  projectId: "warehouse-app-38a03",
+  storageBucket: "warehouse-app-38a03.firebasestorage.app",
+  messagingSenderId: "854063247545",
+  appId: "1:854063247545:web:dd44bfde0b9df87cd76b68"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// ✅ Layout config
+const AISLES = [1,2,3,4];
+const SECTIONS = 5;
+const BINS = 12;
+
+// ✅ App state
+let current = "overview";
+let selected = {};
+let data = {};
+let search = "";
+
+// ✅ Real-time shared data
+db.collection("bins").onSnapshot(snapshot => {
+  data = {};
+  snapshot.forEach(doc => {
+    data[doc.id] = doc.data();
+  });
+  render();
+});
+
+// ✅ Color logic
+function getColor(item) {
+  if (!item) return "red";
+  if (item.qty < 5) return "yellow";
+  return "green";
+}
+
+// ✅ MAIN RENDER FUNCTION
+function render() {
+  const app = document.getElementById("app");
+  app.innerHTML = "";
+
+  // 🔍 SEARCH (always visible)
+  let searchBox = document.createElement("input");
+  searchBox.placeholder = "🔍 Search product...";
+  searchBox.value = search;
+
+  searchBox.oninput = (e) => {
+    search = e.target.value.toLowerCase();
+    render();
+  };
+
+  app.appendChild(searchBox);
+
+  // ✅ OVERVIEW SCREEN
+  if (current === "overview") {
+    AISLES.forEach(a => {
+
+      let wrapper = document.createElement("div");
+      wrapper.className = "aisle";
+
+      let title = document.createElement("h2");
+      title.innerText = "Aisle " + a;
+      wrapper.appendChild(title);
+
+      let sides = (a === 4) ? ["A"] : ["A","B"];
+
+      sides.forEach(s => {
+        let label = document.createElement("div");
+        label.innerHTML = "<strong>Side " + s + "</strong>";
+        wrapper.appendChild(label);
+
+        for (let i=1;i<=SECTIONS;i++) {
+          let btn = document.createElement("button");
+          btn.innerText = "S" + i;
+
+          btn.onclick = () => {
+            selected = { a, s, section: i };
+            current = "shelf";
+            render();
+          };
+
+          wrapper.appendChild(btn);
+        }
+      });
+
+      app.appendChild(wrapper);
+    });
+  }
+
+  // ✅ SHELF VIEW
+  if (current === "shelf") {
+    let back = document.createElement("button");
+    back.innerText = "⬅ Back";
+    back.onclick = () => {
+      current = "overview";
+      render();
+    };
+    app.appendChild(back);
+
+    let title = document.createElement("h2");
+    title.innerText = `Aisle ${selected.a}${selected.s} - Section ${selected.section}`;
+    app.appendChild(title);
+
+    let grid = document.createElement("div");
+    grid.className = "grid";
+
+    for (let i=0;i<BINS;i++) {
+      let id = `${selected.a}${selected.s}-${selected.section}-${String(i+1).padStart(2,"0")}`;
+      let item = data[id];
+
+      let box = document.createElement("div");
+      box.className = "bin " + getColor(item);
+      box.innerText = id;
+
+      // 🔍 Highlight search match
+      if (search && item && item.product && item.product.toLowerCase().includes(search)) {
+        box.style.outline = "4px solid blue";
+      }
+
+      box.onclick = () => {
+        selected.bin = id;
+        current = "detail";
+        render();
+      };
+
+      grid.appendChild(box);
+    }
+
+    app.appendChild(grid);
+  }
+
+  // ✅ DETAIL VIEW
+  if (current === "detail") {
+    let back = document.createElement("button");
+    back.innerText = "⬅ Back";
+    back.onclick = () => {
+      current = "shelf";
+      render();
+    };
+    app.appendChild(back);
+
+    let h = document.createElement("h2");
+    h.innerText = selected.bin;
+    app.appendChild(h);
+
+    let item = data[selected.bin] || {};
+
+    let p = document.createElement("input");
+    let q = document.createElement("input");
+    let n = document.createElement("input");
+
+    p.placeholder = "Product";
+    q.placeholder = "Quantity";
+    n.placeholder = "Notes";
+
+    p.value = item.product || "";
+    q.value = item.qty || "";
+    n.value = item.notes || "";
+
+    app.appendChild(p);
+    app.appendChild(q);
+    app.appendChild(n);
+
+    let saveBtn = document.createElement("button");
+    saveBtn.innerText = "Save";
+
+    saveBtn.onclick = () => {
+      db.collection("bins").doc(selected.bin).set({
+        product: p.value,
+        qty: Number(q.value),
+        notes: n.value
+      });
+    };
+
+    app.appendChild(saveBtn);
+  }
+}
+
+// ✅ Start app
+render();
+
+</script>
+
+</body>
+</html>
