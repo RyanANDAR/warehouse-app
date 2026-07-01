@@ -68,6 +68,8 @@ const BINS = 12;
 let current = "overview";
 let selected = {};
 let data = {};
+let search = "";
+``
 
 // 🔥 REAL-TIME DATA SYNC
 db.collection("bins").onSnapshot(snapshot => {
