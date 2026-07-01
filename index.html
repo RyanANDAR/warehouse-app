@@ -90,7 +90,17 @@ function render() {
   const app = document.getElementById("app");
   app.innerHTML = "";
 
-  if (current === "overview") {
+  // 🔍 Search bar
+let searchBox = document.createElement("input");
+searchBox.placeholder = "Search product...";
+searchBox.value = search;
+
+searchBox.oninput = (e) => {
+  search = e.target.value.toLowerCase();
+  render();
+};
+
+app.appendChild(searchBox);
     AISLES.forEach(a => {
       let wrapper = document.createElement("div");
       wrapper.className = "aisle";
@@ -138,9 +148,16 @@ function render() {
     for (let i=0;i<BINS;i++) {
       let id = `${selected.a}${selected.s}-${selected.section}-${String(i+1).padStart(2,"0")}`;
 
-      let box = document.createElement("div");
-      box.className = "bin " + getColor(data[id]);
-      box.innerText = id;
+      let item = data[id];
+
+let box = document.createElement("div");
+box.className = "bin " + getColor(item);
+box.innerText = id;
+
+// 🔍 Highlight if search matches
+if (search && item && item.product && item.product.toLowerCase().includes(search)) {
+  box.style.outline = "4px solid blue";
+}
 
       box.onclick = ()=>{
         selected.bin = id;
